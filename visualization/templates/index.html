@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Point Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        #graph { width: 100%; height: 800px; }
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .info { padding: 10px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>Real-time Point Cloud</h1>
+        <p>Displaying current points (refreshed every second)</p>
+        <p>Color represents centroid_x value</p>
+    </div>
+    <div id="graph"></div>
+
+    <script>
+        const layout = {
+            title: '3D Point Cloud - Colored by Centroid X',
+            scene: {
+                xaxis: { title: 'X' },
+                yaxis: { title: 'Y' },
+                zaxis: { title: 'Z' }
+            },
+            margin: { l: 0, r: 0, b: 0, t: 30 }
+        };
+        
+        const plotDiv = document.getElementById('graph');
+        Plotly.newPlot(plotDiv, [], layout);
+ 
+        const socket = io();
+
+        socket.on('new_points', function(data) {
+            const colors = data.centroid_x.map(x => {
+                return (x - data.min_x) / (data.max_x - data.min_x);
+            });
+            
+            const trace = {
+                x: data.x,
+                y: data.y,
+                z: data.z,
+                mode: 'markers',
+                type: 'scatter3d',
+                marker: {
+                    size: 4,
+                    color: colors,
+                    colorscale: 'Jet', 
+                    cmin: 0,
+                    cmax: 1,
+                    opacity: 0.8,
+                    colorbar: {
+                        title: 'Centroid X',
+                        titleside: 'right',
+                        tickvals: [0, 0.5, 1],
+                        ticktext: [
+                            data.min_x.toFixed(2),
+                            ((data.min_x + data.max_x)/2).toFixed(2),
+                            data.max_x.toFixed(2)
+                        ]
+                    }
+                }
+            };
+            
+            Plotly.newPlot(plotDiv, [trace], layout);
+            
+            console.log(`Displaying ${data.x.length} points`);
+        });
+    </script>
+</body>
+</html>
